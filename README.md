@@ -23,3 +23,5 @@ The sentiment classification model is trained using:
 Text Preprocessing: Removing special characters, lowercasing, tokenization.
 Vectorization: Bag-of-Words (BoW) model using CountVectorizer.
 Classifier: Logistic Regression with liblinear solver.
+
+Live Demo: https://twitter-sentiment-analysis-vnbby5nttxr8jxwsqhp5cf.streamlit.app/
