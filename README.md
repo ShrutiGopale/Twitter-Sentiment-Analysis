@@ -1,6 +1,7 @@
 # Twitter-Sentiment-Analysis
 
 Overview
+
 This project is a Twitter Sentiment Analysis web application built using Streamlit and Scikit-learn. The application takes a tweet as input and predicts its sentiment as Positive and Negative using a trained Logistic Regression model.
 
 Features
