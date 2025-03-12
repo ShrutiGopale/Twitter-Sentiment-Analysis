@@ -37,44 +37,71 @@ def clean_text(text):
         return text
     return ""  # Return empty string for non-string values
 
-train_data["clean_text"] = train_data["text"].apply(clean_text)
-val_data["clean_text"] = val_data["text"].apply(clean_text)
+@st.cache_data
+def preprocess_data():
+    train_data["clean_text"] = train_data["text"].fillna(" ").apply(clean_text)
+    val_data["clean_text"] = val_data["text"].fillna(" ").apply(clean_text)
 
-# Splitting dataset
-X_train, X_test, y_train, y_test = train_test_split(
-    train_data["clean_text"], train_data["type"], test_size=0.2, random_state=0
-)
+    vectorizer = CountVectorizer(stop_words=nltk.corpus.stopwords.words('english'), max_features=5000)
+    X_train_bow = vectorizer.fit_transform(train_data["clean_text"])
+    X_val_bow = vectorizer.transform(val_data["clean_text"])
+    
+    return vectorizer, X_train_bow, X_val_bow
 
-# Vectorization (Updated to avoid tokenizer warning)
-vectorizer = CountVectorizer(stop_words=nltk.corpus.stopwords.words('english'))
+vectorizer, X_train_bow, X_val_bow = preprocess_data()
 
-X_train_bow = vectorizer.fit_transform(X_train)
-X_test_bow = vectorizer.transform(X_test)
+@st.cache_resource
+def train_model(X_train, y_train):
+    model = LogisticRegression(C=1, solver="liblinear", max_iter=200)
+    model.fit(X_train, y_train)
+    return model
 
-# Train Model
-model = LogisticRegression(C=1, solver="liblinear", max_iter=200)
-model.fit(X_train_bow, y_train)
+model = train_model(X_train_bow, train_data["type"])
 
-# Streamlit UI
-st.title("Twitter Sentiment Analysis")
-st.write("Analyze the sentiment of tweets using a trained machine learning model.")
+@st.cache_data
+def compute_validation_accuracy():
+    y_val = val_data["type"]
+    val_predictions = model.predict(X_val_bow)
+    return accuracy_score(y_val, val_predictions)
 
-user_input = st.text_area("Enter a tweet to analyze sentiment:", "")
+validation_accuracy = compute_validation_accuracy()
 
-if st.button("Analyze Sentiment"):
+# Streamlit UI with Enhanced Design
+st.set_page_config(page_title="Twitter Sentiment Analysis", page_icon="😊", layout="centered")
+
+st.markdown("""
+    <style>
+        .main { background-color: #f0f2f6; }
+        h1 { color: #333366; text-align: center; }
+        .stTextArea>label { font-size: 18px; font-weight: bold; }
+        .stButton>button { background-color: #333366; color: white; border-radius: 10px; }
+        .stButton>button:hover { background-color: #555599; }
+        .stSuccess { font-size: 20px; font-weight: bold; }
+    </style>
+""", unsafe_allow_html=True)
+
+st.title("📊 Twitter Sentiment Analysis")
+st.subheader("🔍 Analyze the sentiment of tweets using a trained ML model!")
+
+st.markdown("""
+    This application takes in a tweet and predicts its sentiment.
+    It categorizes the sentiment into Positive, Negative, Neutral, or Irrelevant.
+""")
+
+st.markdown("---")
+
+# Input Section
+user_input = st.text_area("✍️ Enter a tweet to analyze sentiment:", "", height=100)
+
+if st.button("🚀 Analyze Sentiment"):
     if user_input.strip():
         cleaned_input = clean_text(user_input)
         transformed_input = vectorizer.transform([cleaned_input])
         prediction = model.predict(transformed_input)[0]
-        st.success(f"Predicted Sentiment: **{prediction}**")
+        st.success(f"✅ **Predicted Sentiment:** {prediction}")
     else:
-        st.warning("Please enter a tweet to analyze.")
+        st.warning("⚠️ Please enter a tweet to analyze.")
 
 # Display Model Accuracy
-st.write(f"Model Accuracy on Test Data: {accuracy_score(y_test, model.predict(X_test_bow)) * 100:.2f}%")
-
-# Validation Accuracy
-X_val_bow = vectorizer.transform(val_data["clean_text"])
-y_val = val_data["type"]
-val_accuracy = accuracy_score(y_val, model.predict(X_val_bow))
-st.write(f"Model Accuracy on Validation Data: {val_accuracy * 100:.2f}%")
+st.markdown("---")
+st.metric(label="📊 Model Accuracy on Validation Data", value=f"{validation_accuracy * 100:.2f}%")
