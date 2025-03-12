@@ -50,17 +50,17 @@ def preprocess_data():
 
 vectorizer, X_train_bow, X_val_bow = preprocess_data()
 
-@st.cache_resource
+# Train Model (Removed Caching to Fix UnhashableParamError)
 def train_model(X_train, y_train):
     model = LogisticRegression(C=1, solver="liblinear", max_iter=200)
-    model.fit(X_train, y_train)
+    model.fit(X_train, y_train.astype(str))  # Ensure labels are strings
     return model
 
 model = train_model(X_train_bow, train_data["type"])
 
 @st.cache_data
 def compute_validation_accuracy():
-    y_val = val_data["type"]
+    y_val = val_data["type"].astype(str)
     val_predictions = model.predict(X_val_bow)
     return accuracy_score(y_val, val_predictions)
 
